@@ -4,47 +4,45 @@
  */
 
 //Imports
-import {clone, merge} from 'lodash';
-import {extruders, printers} from './definitions/index';
-import type {Extruder, Printer, ExtruderID, PrinterID, CombinedDefinition} from './types';
+import { clone, merge } from "lodash";
+import { extruders, printers } from "./definitions/index";
+import type {
+  Extruder,
+  Printer,
+  ExtruderID,
+  PrinterID,
+  CombinedDefinition,
+} from "./types";
 
 //Primary definitions are bundled with "cura-wasm" itself
-const primaryExtruders = ['fdmextruder'];
-const primaryPrinters = ['fdmextruder', 'fdmprinter'];
+const primaryExtruders = ["fdmextruder"];
+const primaryPrinters = ["fdmextruder", "fdmprinter"];
 
 /**
  * Recursively resolve an extruder (Squash all depended-on extruders together)
  * @param id The ID of the extruder
  */
-export const resolveExtruder = (id: ExtruderID): Extruder =>
-{
+export const resolveExtruder = (id: ExtruderID): Extruder => {
   //Don't resolve primary extruders (They're bundled with Cura WASM)
-  if (primaryExtruders.includes(id))
-  {
+  if (primaryExtruders.includes(id)) {
     return null;
-  }
-  else
-  {
+  } else {
     //Get the extruder
     const extruder = <Extruder>clone(extruders[id]);
 
     //Resolve parent definitions
-    if (extruder != null && extruder.inherits != null)
-    {
+    if (extruder != null && extruder.inherits != null) {
       //Get parent extruder
       const parent = resolveExtruder(extruder.inherits);
 
       //Delete secondary inherited extruders (Because we're resolving them)
-      if (!primaryExtruders.includes(extruder.inherits))
-      {
+      if (!primaryExtruders.includes(extruder.inherits)) {
         delete extruder.inherits;
       }
 
       //Merge parent and current extruder
       return merge(parent, extruder);
-    }
-    else
-    {
+    } else {
       return extruder;
     }
   }
@@ -54,33 +52,25 @@ export const resolveExtruder = (id: ExtruderID): Extruder =>
  * Recursively resolve a definition (Squash all depended-on defintions together)
  * @param id The ID of the printer
  */
-export const resolvePrinter = (id: PrinterID): Printer => 
-{
+export const resolvePrinter = (id: PrinterID): Printer => {
   //Don't resolve primary definitions (They're are bundled with Cura WASM)
-  if (primaryPrinters.includes(id)) 
-  {
+  if (primaryPrinters.includes(id)) {
     return null;
-  }
-  else 
-  {
+  } else {
     //Get the printer
     const printer = <Printer>clone(printers[id]);
 
     //Resolve parent definitions
-    if (printer != null && printer.inherits != null) 
-    {
+    if (printer != null && printer.inherits != null) {
       const parent = resolvePrinter(printer.inherits);
 
       //Delete secondary inherited definitions (Because we're resolving them)
-      if (!primaryPrinters.includes(printer.inherits))
-      {
+      if (!primaryPrinters.includes(printer.inherits)) {
         delete printer.inherits;
       }
 
       return merge(parent, printer);
-    }
-    else 
-    {
+    } else {
       return printer;
     }
   }
@@ -90,23 +80,21 @@ export const resolvePrinter = (id: PrinterID): Printer =>
  * Resolve an extruder and a printer
  * @param id The ID of the printer
  */
-export const resolveDefinition = (id: PrinterID): CombinedDefinition =>
-{
+export const resolveDefinition = (id: PrinterID): CombinedDefinition => {
   //Get and resolve the printer
   const printer = resolvePrinter(id);
 
   //Get and resolve the extruders
   let extruders: Extruder[] = [];
-  if (printer != null && printer.metadata.machine_extruder_trains != null)
-  {
-    extruders = Object.values(printer.metadata.machine_extruder_trains)
-      .map(extruder => resolveExtruder(extruder));
+  if (printer != null && printer.metadata.machine_extruder_trains != null) {
+    extruders = Object.values(printer.metadata.machine_extruder_trains).map(
+      (extruder) => resolveExtruder(extruder)
+    );
 
     //Generate new machine extruder trains
     const extruderTrains = {};
 
-    for (const key in extruders)
-    {
+    for (const key in extruders) {
       extruderTrains[key] = `extruder-${key}`;
     }
 
@@ -116,6 +104,6 @@ export const resolveDefinition = (id: PrinterID): CombinedDefinition =>
 
   return {
     extruders,
-    printer
+    printer,
   };
 };
